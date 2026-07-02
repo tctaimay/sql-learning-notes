@@ -139,3 +139,45 @@ SELECT
 FROM viewership;
 -- CASE 沒有 ELSE 時預設回傳 NULL，而 COUNT() 不計 NULL，因此達到條件計數效果
 ```
+
+# 📊 SQL 筆記：條件計數
+
+## 5. COUNT() 內誤用子查詢與條件計數錯誤
+
+### 💡 遇到情境
+
+想在同一個查詢中分別計算「筆電數量」與「行動裝置數量」，但在 `COUNT()` 函數內部錯誤地塞入了 `SELECT ... FROM` 子查詢，導致語法解析錯誤。
+
+### ❌ 錯誤示範 (Bad Practice)
+
+```sql
+SELECT
+    COUNT(device_type) AS laptop_reviews,
+    -- 錯誤：COUNT() 內部不能包覆 SELECT 子查詢
+    COUNT(SELECT device_type FROM mobile_type) AS mobile_reviews
+FROM viewership
+WHERE device_type = 'laptop'; -- 錯誤：這會導致整個查詢被限制在只能看 laptop
+```
+
+### ⭕ 正確示範 (Best Practice - PostgreSQL 條件計數)
+
+不需要使用 `WITH AS` 分開表格，直接在 `COUNT(*)` 後方搭配 `FILTER (WHERE ...)` 即可在單一查詢漂亮呈現兩者數據：
+
+```sql
+SELECT
+    COUNT(*) FILTER (WHERE device_type = 'laptop') AS laptop_reviews,
+    COUNT(*) FILTER (WHERE device_type IN ('tablet', 'phone')) AS mobile_reviews
+FROM viewership;
+```
+
+### 📌 補充：跨資料庫通用寫法
+
+`FILTER` 是 PostgreSQL 特有語法，MySQL 等資料庫不支援。通用寫法是 `COUNT(CASE WHEN ...)` 或 `SUM(CASE WHEN ...)`：
+
+```sql
+SELECT
+    COUNT(CASE WHEN device_type = 'laptop' THEN 1 END) AS laptop_reviews,
+    COUNT(CASE WHEN device_type IN ('tablet', 'phone') THEN 1 END) AS mobile_reviews
+FROM viewership;
+-- CASE 沒有 ELSE 時預設回傳 NULL，而 COUNT() 不計 NULL，因此達到條件計數效果
+```
