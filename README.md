@@ -181,3 +181,45 @@ SELECT
 FROM viewership;
 -- CASE 沒有 ELSE 時預設回傳 NULL，而 COUNT() 不計 NULL，因此達到條件計數效果
 ```
+
+# 📊 SQL 筆記：WHERE 與聚合函數
+
+## 6. WHERE 子句中不允許使用聚合函數 (Aggregates not allowed in WHERE)
+
+### 💡 遇到情境
+
+想要篩選出「步驟數量大於 5」或「總和大於某個值」的資料，卻在 `WHERE` 後面直接使用了 `COUNT()` 或 `SUM()`，導致 PostgreSQL 跳出錯誤訊息：
+
+> `ERROR: aggregates not allowed in WHERE clause`
+
+### 🔍 原因解析
+
+這跟 SQL 的**「執行順序」**有絕對的關係。SQL 在執行時的順序為：
+
+1. `FROM`（找出表格）
+2. `WHERE`（逐行進行條件篩選）➔ **此時根本還沒計算總數！**
+3. `GROUP BY`（將資料壓縮分組）
+4. `HAVING`（對分組後的統計結果進行篩選）
+5. `SELECT` / `COUNT()`（計算並呈現最終欄位）
+
+因為 `WHERE` 執行的時間點遠早於 `COUNT()`，在逐行檢查資料時，SQL 還不曉得最終算出來的總數是多少，因此無法在 `WHERE` 裡做比較。
+
+### ❌ 錯誤示範 (Bad Practice)
+
+```sql
+SELECT part
+FROM parts_assembly
+WHERE COUNT(assembly_step) > 5 -- 錯誤：WHERE 內不能使用 COUNT() 聚合函數
+GROUP BY part;
+```
+
+### ⭕ 正確示範 (Best Practice)
+
+只要篩選條件涉及到統計值（如 `COUNT`、`SUM`、`AVG`），必須將條件寫在 `GROUP BY` 後方的 `HAVING` 子句中：
+
+```sql
+SELECT part, COUNT(assembly_step) AS total_steps
+FROM parts_assembly
+GROUP BY part
+HAVING COUNT(assembly_step) > 5; -- 正確：使用 HAVING 對群組後的計數結果進行篩選
+```
