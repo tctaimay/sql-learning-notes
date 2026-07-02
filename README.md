@@ -223,3 +223,32 @@ FROM parts_assembly
 GROUP BY part
 HAVING COUNT(assembly_step) > 5; -- 正確：使用 HAVING 對群組後的計數結果進行篩選
 ```
+## 10. 綜合實戰：使用者活躍天數分析 (結合 MIN/MAX、DATE 相減與別名避錯)
+
+### 💡 遇到情境
+在分析使用者行為時，想要計算每個用戶（`user_id`）在平台上的生命週期或活躍天數。需要同時抓出「最初始發文日期」、「最後一次發文日期」，並計算出兩者相差的「精確天數（整數）」。
+
+### ⭕ 正確示範 (Best Practice)
+此處完美融合了三個核心觀念：
+1. 使用 `MIN()` 與 `MAX()` 擷取時間極值。
+2. 使用 `::DATE` 強制轉型後相減，直接取得整數天數（解法 B）。
+3. 在同層 `SELECT` 運算中，直接使用原始聚合函數相減，完美避開「同層別名無法引用」的錯誤。
+
+```sql
+WITH days_between AS (
+    SELECT 
+        user_id, 
+        MIN(post_date) AS first_date,  -- 擷取最早發文時間
+        MAX(post_date) AS last_date,   -- 擷取最晚發文時間
+        
+        -- 核心技巧：不用別名相減，直接將 MAX 與 MIN 轉為 DATE 後相減得到整數天數
+        (MAX(post_date)::DATE - MIN(post_date)::DATE) AS days_gap
+    FROM posts
+    GROUP BY user_id
+)
+SELECT 
+    user_id,
+    first_date,
+    last_date,
+    days_gap
+FROM days_between;
