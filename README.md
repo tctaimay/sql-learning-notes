@@ -1,3 +1,4 @@
+
 # sql-learning-notes
 記錄我在學習 SQL 過程中遇到的 Bug 與正確解法的筆記，方便未來撰寫語法時隨時查閱。
 
@@ -20,7 +21,7 @@ WITH combined_table AS (
     LEFT JOIN table_B b ON a.user_id = b.user_id
 )
 SELECT user_id -- 報錯：Ambiguous column name
-FROM combined_table;
+FROM combined_table;```
 
 ###  ⭕ 正確示範 (Best Practice)
 在第一階段的 SELECT 中就明確指定表格來源，並使用 AS 重新命名別名以作區隔：
@@ -37,7 +38,7 @@ WITH combined_table AS (
 )
 
 SELECT a_user_id -- 這樣寫 SQL 就能完全辨識，順利執行！
-FROM combined_table;
+FROM combined_table;```
 
 ## 2. NULL 值的正確篩選方式
 ### 💡 遇到情境
@@ -62,6 +63,6 @@ WHERE user_id IS NULL;
 
 -- 延伸應用：找出在 table_B 沒有購買紀錄的 table_A 會員 (Anti-Join)
 SELECT a.user_id, a.username
-FROM table_A a
+FROM table_A a```
 LEFT JOIN table_B b ON a.user_id = b.user_id
 WHERE b.user_id IS NULL; -- 篩選出沒出現在 B 表的 A 表會員
