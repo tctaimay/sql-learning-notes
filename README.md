@@ -1,1 +1,67 @@
 # sql-learning-notes
+記錄我在學習 SQL 過程中遇到的 Bug 與正確解法的筆記，方便未來撰寫語法時隨時查閱。
+
+## 🔍 目錄
+1. [LEFT JOIN 導致的欄位名稱模糊 (Ambiguous column name)](#1-left-join-導致的欄位名稱模糊)
+2. [NULL 值的正確篩選方式](#2-null-值的正確篩選方式)
+
+---
+
+## 1. LEFT JOIN 導致的欄位名稱模糊
+
+### 💡 遇到情境
+當使用 `WITH ... AS` (CTE) 或 `LEFT JOIN` 結合兩個表格，且兩表有相同欄位名稱（如 `user_id`）時，若直接在後續的 `SELECT` 呼叫該欄位，會導致 SQL 無法辨識而報錯。
+
+### ❌ 錯誤示範 (Bad Practice)
+```sql
+WITH combined_table AS (
+    SELECT *  -- 錯誤：直接用 * 把兩邊同名欄位都抓進來
+    FROM table_A a
+    LEFT JOIN table_B b ON a.user_id = b.user_id
+)
+SELECT user_id -- 報錯：Ambiguous column name
+FROM combined_table;
+
+###  ⭕ 正確示範 (Best Practice)
+在第一階段的 SELECT 中就明確指定表格來源，並使用 AS 重新命名別名以作區隔：
+
+```sql
+WITH combined_table AS (
+    SELECT 
+        a.user_id AS a_user_id,   -- 明確指定 table_A 的 user_id
+        b.user_id AS b_user_id,   -- 明確指定 table_B 的 user_id
+        a.username,
+        b.login_time
+    FROM table_A a
+    LEFT JOIN table_B b ON a.user_id = b.user_id
+)
+
+SELECT a_user_id -- 這樣寫 SQL 就能完全辨識，順利執行！
+FROM combined_table;
+
+## 2. NULL 值的正確篩選方式
+### 💡 遇到情境
+想要在資料庫中，篩選出某個欄位值為空（Missing Value / 缺少資料）的資料列。
+
+### ❌ 錯誤示範 (Bad Practice)
+```sql
+SELECT * 
+FROM combined_table 
+WHERE user_id = NULL;
+-- ❌ 這樣寫會找不到任何資料！
+-- 因為 NULL 代表「未知」，在 SQL 中不能用等號（=）做比較。
+
+⭕ 正確示範 (Best Practice)
+在 SQL 中必須使用專門的邏輯運算式 IS NULL 或 IS NOT NULL：
+
+SQL
+-- 尋找空值（正確寫法）
+SELECT * 
+FROM combined_table 
+WHERE user_id IS NULL;
+
+-- 延伸應用：找出在 table_B 沒有購買紀錄的 table_A 會員 (Anti-Join)
+SELECT a.user_id, a.username
+FROM table_A a
+LEFT JOIN table_B b ON a.user_id = b.user_id
+WHERE b.user_id IS NULL; -- 篩選出沒出現在 B 表的 A 表會員
