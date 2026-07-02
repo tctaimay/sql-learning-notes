@@ -81,3 +81,19 @@ FROM table_A a
 LEFT JOIN table_B b ON a.user_id = b.user_id
 WHERE b.user_id IS NULL; -- 篩選出沒出現在 B 表的 A 表會員
 ```
+
+## 4. GROUP BY 的欄位限制錯誤 (Column must appear in the GROUP BY clause)
+
+### 💡 遇到情境
+在 `SELECT` 中同時挑選了多個欄位（例如 `part` 和 `assembly_step`），但在 `GROUP BY` 後面只寫了一個欄位（`GROUP BY part`），導致 PostgreSQL 噴出錯誤：
+> `ERROR: column "..." must appear in the GROUP BY clause or be used in an aggregate function`
+
+### 🔍 原因解析
+當 SQL 幫你把資料依照 `part` 壓縮合併成同一列時，如果你在 `SELECT` 後面叫它顯示沒有被分組的 `assembly_step`，SQL 會不知道在這一列中，到底該顯示該零件旗下哪一個步驟的值（因為有很多個），因而直接報錯。
+
+### ❌ 錯誤示範 (Bad Practice)
+```sql
+SELECT part, assembly_step -- 錯誤：assembly_step 沒有在 GROUP BY 中，也沒有被聚合函數包裹
+FROM parts_assembly
+WHERE finish_date IS NULL
+GROUP BY part;
